@@ -200,11 +200,56 @@ class AgentAlphaBeta(AgentMinimax):
                     return float('inf')
             return curr_max
 
+    # RB-AlphaBeta step evaluation
     def evaluate(self, env: TaxiEnv, agent_id, depth):
         return self.rb_alpha_beta(env, agent_id, depth, alpha=float('-inf'), beta=float('inf'))
 
 
-class AgentExpectimax(Agent):
-    # TODO: section d : 1
-    def run_step(self, env: TaxiEnv, agent_id, time_limit):
-        raise NotImplementedError()
+class AgentExpectimax(AgentMinimax):
+    def calc_expectation(self, env: TaxiEnv, agent_id, depth):
+        legal_ops = env.get_legal_operators(agent_id)
+
+        def get_weight(op):
+            if op in ["park", "refuel", "drop off passenger", "pick up passenger"]:
+                return 2
+            return 1
+
+        ops_weights = [get_weight(op) for op in legal_ops]
+        ops_probabilities = [float(weight)/sum(ops_weights) for weight in ops_weights]
+
+        expectation = 0
+        for op, op_weight in zip(legal_ops, ops_probabilities):
+            if time.time() > self.kill_time:
+                return self.heuristic(env, self.agent_id)
+
+            cloned_env = env.clone()
+            cloned_env.apply_operator(agent_id, op)
+
+            expectation += op_weight * self.evaluate(cloned_env, 1 - agent_id, depth - 1)
+
+        return expectation
+
+    # RB-Expectimax step evaluation
+    def evaluate(self, env: TaxiEnv, agent_id, depth):
+        if time.time() > self.kill_time or env.done() or depth == 0:
+            return self.heuristic(env, self.agent_id)
+
+        operators, children = self.successors(env, agent_id)
+        if self.agent_id == agent_id:
+            curr_min = float('inf')
+            for op in operators:
+                if time.time() > self.kill_time:
+                    return self.heuristic(env, self.agent_id)
+
+                cloned_env = env.clone()
+                cloned_env.apply_operator(agent_id, op)
+
+                v = self.evaluate(cloned_env, 1 - agent_id, depth - 1)
+
+                if v < curr_min:
+                    curr_min = v
+
+            return curr_min
+        else:
+            return self.calc_expectation(env, agent_id, depth)
+
