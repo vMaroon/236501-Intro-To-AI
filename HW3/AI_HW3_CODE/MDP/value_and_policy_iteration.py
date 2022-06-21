@@ -23,6 +23,21 @@ def get_max_future_utility(mdp, u, state):
     return best_action, max_future_utility
 
 
+def utility_get_matching_policies(mdp, u, state):
+    possible_actions = []
+    best_action = ''
+    max_future_utility = float('-inf')  # calculate discounted max future util
+    for action in mdp.actions:
+        local_utility = get_local_utility(mdp, u, state, action)
+        if float(mdp.board[state[0]][state[1]]) + local_utility == u[state[0]][state[1]]:
+            possible_actions.append(action)
+        if local_utility > max_future_utility:  # for safety
+            max_future_utility = local_utility
+            best_action = action
+
+    return possible_actions, best_action
+
+
 def value_iteration(mdp, u_init, epsilon=10 ** (-3)):
     u, u_prime = deepcopy(u_init), deepcopy(u_init)
     delta, once = 0, True
@@ -45,13 +60,17 @@ def value_iteration(mdp, u_init, epsilon=10 ** (-3)):
     return u
 
 
-def get_policy(mdp, U):
+def get_policy(mdp, u):
     policy = np.empty((mdp.num_row, mdp.num_col), dtype='O')
     for r, c in np.ndindex(mdp.num_row, mdp.num_col):
         if mdp.board[r][c] == 'WALL' or (r, c) in mdp.terminal_states:
             continue
 
-        policy[r, c] = get_max_future_utility(mdp, U, (r, c))[0]
+        possible_actions, best_action = utility_get_matching_policies(mdp, u, (r, c))
+        if len(possible_actions) == 0:
+            policy[r, c] = best_action
+        else:
+            policy[r, c] = possible_actions[0]
 
     return policy.tolist()
 

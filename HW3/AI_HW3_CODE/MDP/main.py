@@ -2,7 +2,7 @@ import argparse
 import os
 from mdp import MDP
 from value_and_policy_iteration import value_iteration, get_policy, policy_evaluation, policy_iteration
-
+from bonus import get_all_policies
 
 def is_valid_file(parser, arg):
     if not os.path.exists(arg):
@@ -93,6 +93,12 @@ def example_driver():
     print("\nFinal policy:")
     policy_new = policy_iteration(mdp, policy)
     mdp.print_policy(policy_new)
+
+    print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+    print("@@@@@@@@@@@@@@ Bonus @@@@@@@@@@@@@@")
+    print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+
+    print(get_all_policies(mdp, U_eval))
 
     print("Done!")
 
