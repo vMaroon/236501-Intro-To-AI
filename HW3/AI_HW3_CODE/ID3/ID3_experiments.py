@@ -1,3 +1,5 @@
+import numpy as np
+
 from ID3 import ID3
 from utils import *
 
@@ -62,7 +64,11 @@ def basic_experiment(x_train, y_train, x_test, y_test, formatted_print=False):
     acc = None
 
     # ====== YOUR CODE: ======
-    raise NotImplementedError
+    id3 = ID3([])
+    id3.fit(x_train, y_train)
+
+    y_pred = id3.predict(x_test)
+    acc = accuracy(y_test, y_pred)
     # ========================
 
     assert acc > 0.9, 'you should get an accuracy of at least 90% for the full ID3 decision tree'
@@ -70,7 +76,7 @@ def basic_experiment(x_train, y_train, x_test, y_test, formatted_print=False):
 
 
 # ========================================================================
-def cross_validation_experiment(plot_graph=True):
+def cross_validation_experiment(x_train, y_train, plot_graph=True):
     """
     Use cross validation to find the best M for the ID3 model, used as pruning parameter.
 
@@ -85,12 +91,32 @@ def cross_validation_experiment(plot_graph=True):
 
     best_m = None
     accuracies = []
-    m_choices = []
+    m_choices = [5, 10, 50, 100, 200]
     num_folds = 5
 
     # ====== YOUR CODE: ======
     assert len(m_choices) >= 5, 'fill the m_choices list with  at least 5 different values for M.'
-    raise NotImplementedError
+    idx = np.random.permutation(len(x_train))
+    shuffled_x, shuffled_y = x_train[idx], y_train[idx]
+
+    x_split, y_split = np.array_split(shuffled_x, num_folds, axis=0), np.array_split(shuffled_y, num_folds, axis=0)
+
+    for m in m_choices:
+        accuracies_for_m = []
+        for val_idx in range(len(x_split)):
+            id3 = ID3([], min_for_pruning=m)
+            id3.fit(np.concatenate([x_split[i] for i in range(len(x_split)) if i != val_idx]),
+                    np.concatenate([y_split[i] for i in range(len(y_split)) if i != val_idx]))
+
+            y_pred = id3.predict(x_split[val_idx])
+            acc_ = accuracy(y_split[val_idx], y_pred)
+
+            accuracies_for_m.append(acc_)
+
+        accuracies.append(accuracies_for_m)
+
+    accuracies_mean = np.array([np.mean(acc) * 100 for acc in accuracies])
+    best_m = m_choices[list(accuracies_mean).index(np.max(accuracies_mean))]
 
     # ========================
     accuracies_mean = np.array([np.mean(acc) * 100 for acc in accuracies])
@@ -124,7 +150,11 @@ def best_m_test(x_train, y_train, x_test, y_test, min_for_pruning):
     acc = None
 
     # ====== YOUR CODE: ======
-    raise NotImplementedError
+    id3 = ID3([], min_for_pruning=min_for_pruning)
+    id3.fit(x_train, y_train)
+
+    y_pred = id3.predict(x_test)
+    acc = accuracy(y_test, y_pred)
     # ========================
 
     return acc
@@ -150,7 +180,7 @@ if __name__ == '__main__':
            modify the value from False to True to plot the experiment result
     """
     plot_graphs = True
-    best_m = cross_validation_experiment(plot_graph=plot_graphs)
+    best_m = cross_validation_experiment(data_split[0], data_split[1], plot_graph=plot_graphs)
     print(f'best_m = {best_m}')
 
     """
@@ -158,5 +188,7 @@ if __name__ == '__main__':
         (*) To run the experiment uncomment below code and run it
     """
     acc = best_m_test(*data_split, min_for_pruning=best_m)
+    print(acc)
+
     assert acc > 0.95, 'you should get an accuracy of at least 95% for the pruned ID3 decision tree'
     print(f'Test Accuracy: {acc * 100:.2f}%' if formatted_print else acc)
